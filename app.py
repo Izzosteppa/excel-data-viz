@@ -20,12 +20,12 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # Ensure upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Database configuration
+# Database configuration - UPDATE WITH YOUR CREDENTIALS
 DB_CONFIG = {
     'host': 'localhost',
-    'database': 'financial_data',
+    'database': 'financial_dashboard',
     'user': 'root', 
-    'password': 00000000, 
+    'password': '@Siya2507ngqoba',  
 }
 
 def allowed_file(filename):
@@ -60,9 +60,10 @@ def init_database():
             record_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT,
             year INT NOT NULL,
-            month VARCHAR(20) NOT NULL,
+            month INT NOT NULL,
             amount DECIMAL(10,2) NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(user_id)
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            UNIQUE KEY unique_user_year_month (user_id, year, month)
         )
         """
         
@@ -74,14 +75,15 @@ def init_database():
         if cursor.fetchone()[0] == 0:
             sample_users = [
                 ("Jane Doe",),
-                ("John Smith",),
-                ("Alice Johnson",)
+                ("Tshepo Ramadukana",),
+                ("Siyanda Ngqoba",)
             ]
             cursor.executemany("INSERT INTO users (name) VALUES (%s)", sample_users)
         
         connection.commit()
         cursor.close()
         connection.close()
+        print("Database initialized successfully")
 
 @app.route('/')
 def index():
@@ -119,25 +121,48 @@ def upload_file(user_id, year):
             if not cursor.fetchone():
                 return jsonify({'error': 'User not found'}), 404
             
-            # Clear existing records for this user and year
-            cursor.execute("DELETE FROM financial_records WHERE user_id = %s AND year = %s", 
-                         (user_id, year))
-            
-            # Insert new records
+            # Process and insert records
             records_inserted = 0
-            for _, row in df.iterrows():
-                month = str(row['Month']).strip()
-                amount = float(row['Amount'])
-                
-                cursor.execute(
-                    "INSERT INTO financial_records (user_id, year, month, amount) VALUES (%s, %s, %s, %s)",
-                    (user_id, year, month, amount)
-                )
-                records_inserted += 1
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    month = int(row['Month'])
+                    amount = float(row['Amount'])
+                    
+                    # Validate month
+                    if month < 1 or month > 12:
+                        errors.append(f"Row {index + 2}: Invalid month '{row['Month']}'")
+                        continue
+                    
+                    # Validate amount
+                    if amount < 0:
+                        errors.append(f"Row {index + 2}: Invalid amount '{row['Amount']}'")
+                        continue
+                    
+                    # Insert or update record
+                    cursor.execute("""
+                        INSERT INTO financial_records (user_id, year, month, amount) 
+                        VALUES (%s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE amount = VALUES(amount)
+                    """, (user_id, year, month, amount))
+                    
+                    records_inserted += 1
+                    
+                except (ValueError, TypeError) as e:
+                    errors.append(f"Row {index + 2}: Invalid data format")
+                    continue
             
             connection.commit()
             cursor.close()
             connection.close()
+            
+            if errors:
+                return jsonify({
+                    'message': f'Uploaded {records_inserted} records with {len(errors)} errors',
+                    'records_count': records_inserted,
+                    'errors': errors[:5]  # Return first 5 errors
+                }), 207  # Partial content
             
             return jsonify({
                 'message': f'Successfully uploaded {records_inserted} records',
@@ -170,7 +195,7 @@ def get_financial_data(user_id, year):
             SELECT month, amount 
             FROM financial_records 
             WHERE user_id = %s AND year = %s 
-            ORDER BY record_id
+            ORDER BY month
         """, (user_id, year))
         
         records = cursor.fetchall()
@@ -208,5 +233,6 @@ def get_users():
         return jsonify({'error': f'Error retrieving users: {str(e)}'}), 500
 
 if __name__ == '__main__':
+    print("🚀 Starting Financial Dashboard Server...")
     init_database()
     app.run(debug=True, port=5000)

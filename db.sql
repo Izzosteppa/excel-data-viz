@@ -21,11 +21,10 @@ CREATE TABLE IF NOT EXISTS financial_records (
 
 -- Insert sample users
 INSERT INTO users (name) VALUES 
+
 ('Jane Doe'),
-('John Smith'),
-('Alice Johnson'),
-('Bob Wilson'),
-('Sarah Davis');
+('Tshepo Ramadukana'),
+('Siyanda Ngqoba');
 
 -- Create indexes for better performance
 CREATE INDEX idx_user_year ON financial_records(user_id, year);

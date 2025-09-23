@@ -20,7 +20,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # Ensure upload folder exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Database configuration - UPDATE WITH YOUR CREDENTIALS
+# Database configuration
 DB_CONFIG = {
     'host': 'localhost',
     'database': 'financial_dashboard',
@@ -71,14 +71,14 @@ def init_database():
         cursor.execute(financial_records_table)
         
         # Insert sample user data
-        cursor.execute("SELECT COUNT(*) FROM users")
-        if cursor.fetchone()[0] == 0:
-            sample_users = [
-                ("Jane Doe",),
-                ("Tshepo Ramadukana",),
-                ("Siyanda Ngqoba",)
-            ]
-            cursor.executemany("INSERT INTO users (name) VALUES (%s)", sample_users)
+        # cursor.execute("SELECT COUNT(*) FROM users")
+        # if cursor.fetchone()[0] == 0:
+        #     sample_users = [
+        #         ("Jane Doe",),
+        #         ("Tshepo Ramadukana",),
+        #         ("Siyanda Ngqoba",)
+        #     ]
+        #     cursor.executemany("INSERT INTO users (name) VALUES (%s)", sample_users)
         
         connection.commit()
         cursor.close()
